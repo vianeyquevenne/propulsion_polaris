@@ -1,0 +1,134 @@
+"Titan's characteristics"
+
+g = 1,352 [m/s^2] "Acceleration due to gravity"
+T_atm = 93,5 [K] "Temperature outside the rover (ESA and Cassini-Huygens mission)"
+P_atm = 146645 [Pa] "Atmospheric pressure (Cassini-Huygens mission)"
+
+x_N2 = 0,984 "Percentage of Nitrogen in Titan's atm"
+x_CH4 = 0,016 "Percentage of Methane in Titan's atm"
+x_H2 = 0,002 "Percentage of Hydrogen in Titan's atm"
+
+
+"Fluids and reactants properties"
+
+R_N2 = R#/MolarMass(N2) "Gas constant for Nitrogen"
+R_CH4 = R#/MolarMass(CH4) "Gas constant for Methane"
+R_H2 = R#/MolarMass(H2) "Gas constant for Hydrogen"
+
+rho_H2 = Density(Hydrogen;T=T_atm;P=P_atm) "Density of Hydrogen"
+rho_N2 = Density(Nitrogen;T=T_atm;P=P_atm) "Density of Nitrogen"
+rho_atm = (P_atm/T_atm)*((X_N2/R_N2)+(X_CH4/R_CH4)+(X_H2/R_H2)) "Density of air)"
+
+Cp_H2 = Cp(Hydrogen;T=T_atm;P=P_atm)
+Cv_H2 = Cv(Hydrogen;T=T_atm;P=P_atm)
+gamma_H2 = Cp_H2/Cv_H2 "heat capacity ratio of H2 at atmospheric conditions"
+
+
+
+
+
+""
+"-------------------------------------- BALLOON --------------------------------------"
+
+
+d_b_x = 6 [m] "diameter of balloon in the x axis"
+d_b_y = 6 [m] "diameter of balloon in the y axis"
+d_b_z = 6 [m] "diameter of balloon in the z axis"
+
+V_b = (pi/6)*(d_b_x*d_b_y*d_b_z) "Volume of balloon"
+rho_b = Density(H2;T=T_c;P=P_atm) "Density of the H2 in the balloon at initial conditions"
+F_b = g*V_b*(rho_atm-rho_b) "buoyancy force"
+m_b_L = F_b/g "mass that the balloon can lift"
+m_b_H2 = V_b*rho_b "mas needed to fill the balloon"
+
+"Drag force"
+
+mu_N2 = Viscosity(Nitrogen;T=T_atm;P=P_atm) "Dynamic Viscosity for Nitrogen"
+v_w = 2,5 "Average wind speed (Cassini-Huygens mission)"
+d_b_h = (2*d_b_x*d_b_y*(64-16*((d_b_x-d_b_y)/(d_b_x+d_b_y))^2))/((d_b_x+d_b_y)*(64-3*((d_b_x-d_b_y)/(d_b_x+d_b_y))^4))"Hydraulic diameter for an ellipse"
+Re = (v_w*d_b_h*rho_N2)/mu_N2 "Reynolds Number"
+{C_D = 0,2 {(Almedj, J. doi: 10.1016/j.powtec.2007.12.006)}}
+C_D = (24/Re) + (2,6*(Re/5,0))/(1+(Re/5,0)^(1,52)) + (0,411*(Re/(2,63*10^5))^(-7,94))/(1+(Re/(2,63*10^5))^(-8)) + (0,25*(Re/10^6)/(1+Re/10^(6))) "Drag coefficient"
+A_b = pi*(d_b_x*d_b_y)/4 "Use both axis perpendicular to the wind direction"
+F_D = (rho_atm*(v_w)^2*C_D*A_b)/2 "drag force / thrust needed to stabilize the rover"
+
+
+
+
+
+""
+"-------------------------------------- PROPULSION --------------------------------------"
+
+"Chamber conditions"
+
+P_c*V_CU = m_H2*R_H2*T_c
+T_c = 433,15 [K] "AlH3 decomposition temperature (160 degC)" {Source: https://www.hydrogen.energy.gov/pdfs/progress06/iv_a_4a_graetz.pdf}
+P_c/P_atm = (T_c/T_e)^(gamma_H2/(gamma_H2-1))
+d_c = 0,0158 [m] "diameter of the nozzle chamber (1/2 in ID)"
+A_c = pi*(d_c/2)^(2) "nozzle exit surface"
+
+"Nozzle throat"
+
+epsilon_c = 3 "Contraction ratio (A_o /A*)"
+epsilon_c = A_c / A_t "Throat Area"
+d_t = sqrt(4*(A_t/pi)) "diameter of the throat"
+
+"Nozzle exit"
+
+{M_2 = sqrt(((P_1/P_3)^((gamma_H2-1)/gamma_H2)-1)*(2/(gamma_H2-1))) "Mach number at the exit of the nozzle"}
+{P_1/P_3 = (1+((gamma_H2-1)*M_2^2)/2)^(gamma_H2/(gamma_H2-1)) "mach number (9.28a White F.)"}
+(T_c/T_e) = (1+((gamma_H2-1)*M_e^2)/2) "mach number at the exit (9.28a White F.)"
+
+epsilon_e = (1/M_e)*((gamma_H2+1)/2)^(-(gamma_H2+1)/(2*(gamma_H2-1)))*(1+((gamma_H2-1)/2)*M_e^(2))^((gamma_H2+1)/(2*(gamma_H2-1))) "Expansion ratio"
+epsilon_e = A_e / A_t
+d_e = sqrt(4*(A_e/pi)) "diameter of the throat"
+c_e = sqrt(gamma_H2 * R_H2 * T_e) "speed of sound at the exit"
+
+"Mass Flow Rate and Thrust Produced"
+m_dot = A_t*P_c*sqrt(gamma_H2/(R_H2*T_c))*(2/(gamma_H2+1))^((gamma_H2+1)/(2*(gamma_H2-1)))
+v_e = c_e * M_e "exit velocity"
+F_th = m_dot*v_e "Thrust produced by one thruster"
+{V_dot = m_dot/Density(H2;T=T_c;P=P_c)}
+
+"Distance traveled and H2 consumed"
+
+t = 2 [min] * 60 [s/min] "time that the valves are going to be open"
+F_th = m_b_L*a "acceleration of the rover due to the thruster effect while traversing at the same speed of the wind"
+D_on = v_w*t + (a*t^2)/2 "Distance traveled by the rover if the thruster is activated"
+D_off = v_w*t "Distance traveled by the rover with just the effect of the wind drag"
+m_th = m_dot*t "mass of H2 consumed by the thruster"
+{V_th = V_dot*t "volume of H2 consumed by the thruster"}
+
+
+
+
+""
+"-------------------------------------- CHEMICAL UNIT --------------------------------------"
+
+V_CU = 20 [m^3] "Volume of the Chemical Unit"
+d_CU = h_CU "Dimensions for a standarized tank"
+V_CU = pi*(d_CU/2)^2*h_CU 
+
+"Amount of reactants needed"
+
+m_H2 = m_th + m_b_H2 "Total amount of H2 needed"
+
+"Chemical Reaction"
+
+"AlH_3 -> Al + 3/2 H_2"
+
+"Molar quantities"
+
+n_Al = m_Al/MolarMass(Al)
+n_AlH3 = m_AlH3/MolarMass(AlH3)
+n_H2 = m_H2/MolarMass(H2)
+
+"Stoichiometry"
+
+n_Al = n_AlH3
+n_H2 = (3/2)*n_AlH3
+
+{P_2 = (1+((gamma_H2-1)/2)*M_2^2)^((-gamma_H2/(gamma_H2-1)))*P_1 "exit pressure"}
+{m_dot = (F_D - (P_2 - P_3)*A_2) / v_2 "mass flow rate"}
+
+{Note: All the equations that don't have a citation were checked with "White, F. Fluid Mechanics. 7th edition"}
